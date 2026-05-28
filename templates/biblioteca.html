@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Jogos zerados</h1>
+<p> Aqui ficará a lista de jogos que já zerei.</p>
+
+<div class="card">
+    <ul>
+        {% for jogo in lista_jogos %}
+        <li class="item-jogo">
+
+            <a href="/jogo/{{ jogo.id }}">
+                {{jogo.titulo}} 
+            </a>
+            <details class="dropdown">
+                <summary class="pontinhos">⋮</summary>
+                <ul class="menu-opcoes">
+                    <li>
+                        <a href="/deletar/{{ jogo.id }}">
+                            Excluir jogo
+                        </a>
+                    </li>
+                </ul>
+            </details>
+        </li>
+        {% else %}
+        <p>Você não zerou nada ainda, noob.</p>
+        {% endfor %}
+    </ul>
+</div>
+
+{% endblock %}

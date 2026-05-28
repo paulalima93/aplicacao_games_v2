@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="detalhes-jogo">
+    <div class="header-jogo">
+        <h1>{{jogo.titulo}}</h1>
+
+        <div class="header-acoes">
+            <span class="badge {{jogo.status.lower()}}">{{jogo.status}}</span>
+
+            <details class="dropdown">
+                <summary class="pontinhos">⋮</summary>
+                <ul class="menu-opcoes">
+                    <li>
+                        <a href="/mudar_status/{{jogo.id}}/Backlog">
+                            Mover para Backlog
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/mudar_status/{{jogo.id}}/Zerado">
+                            Mover para Zerados
+                        </a>
+                    </li>
+                    <hr>
+                    <li>
+                        <a href="/deletar/{{ jogo.id }}">
+                            Excluir jogo
+                        </a>
+                    </li>
+                </ul>
+            </details>
+        </div>
+    </div>
+
+    <div class="info">
+        <p><strong>Gênero: </strong>{{jogo.genero}}</p>
+    </div>
+
+
+
+    <a href="javascript:history.back()" class="btn-voltar">Voltar</a>
+
+</div>
+
+{% endblock %}

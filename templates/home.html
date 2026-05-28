@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Bem-vindo ao seu Tracker!</h1>
+    <p>Use o menu acima para navegar entre seus jogos zerados e o seu backlog.</p>
+    
+    <div class="dashboard-resumo">
+        <p>Você tem <strong>{{backlog}}</strong> jogos no Backlog.</p>
+        <p>Você já zerou <strong>{{zerados}}</strong> jogos!</p>
+        <p>Você tem <strong>{{wishlist}}</strong> jogos na sua wishlist!</p>
+    </div>
+
+    <div class="card">
+        <h3> Adicionar Novo Jogo</h3>
+
+        <form action="/adicionar" method="POST" class="form-cadastro">
+            <input type="text" name="titulo" placeholder="Nome do Jogo" required>
+            <input type="text" name="genero" placeholder="Gênero" required>
+            <select name="status">
+                <option value="Backlog"> Na Fila (Backlog)</option>
+                <option value="Zerado"> Finalizado (Zerado)</option>
+                <option value="Wishlist"> Comprarei (Wishlist)</option>
+            </select>
+
+            <button type="submit">Salvar Jogo</button>
+
+        </form>
+    </div>
+{% endblock %}

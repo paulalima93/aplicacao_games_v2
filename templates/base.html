@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Meu Game Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <nav class="navbar">
+        <h2>🎮 Game Tracker</h2>
+        <ul class="nav-links">
+            <li><a href="/">Início</a></li>
+            <li><a href="/biblioteca">Jogos Zerados</a></li>
+            <li><a href="/backlog">Backlog (Fila)</a></li>
+            <li><a href="/wishlist">Wishlist</a></li>
+        </ul>
+
+        <div>
+            {% if 'usuario' in session %}
+            <div class="user-profile">
+                <img src="{{ session['usuario']['foto']}}" alt="Avatar" class="user-avatar">
+                <div class="user-info">
+                    <span class="user-name">{{ session['usuario']['nome']}}</span>
+                    <a href="/sincronizar_steam">Sincronizar</a>
+                    <a href="/logout">Sair</a>
+                </div>
+            </div>
+            {% else %}
+                <a href="/login/steam" class="btn-login"> 
+                    <img src="{{ url_for('static', filename='img/steam-logo.png')}}">
+                    Entrar com a Steam
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer>
+        <p>Desenvolvido nas aulas de Python.</p>
+    </footer>
+
+</body>
+</html>
