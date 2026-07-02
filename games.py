@@ -10,6 +10,15 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy import MetaData
 
+#imports da analise
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import io
+import base64
+import time
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get('CHAVE_SECRETA_FLASK')
@@ -224,10 +233,111 @@ def steam_authorize():
 
     return redirect(url_for('sincronizar_steam'))
 
+
 @app.route('/logout')
 def logout():
     session.pop('usuario', None)
     return redirect(url_for('home'))
+
+@app.route('/estatisticas')
+def estatiticas():
+    if 'usuario' not in session:
+        return redirect(url_for('login_steam'))
+    
+    meu_id = session['usuario']['id']
+    #meu_id = 76561198868735365
+
+    consulta = Jogo.query.filter_by(usuario_id=meu_id).statement
+    df_jogos = pd.read_sql(consulta, db.engine)
+
+    if df_jogos.empty:
+        return render_template(
+            "estatisticas.html", 
+            grafico_barras=None,
+            grafico_pizza=None,
+            grafico_matriz=None
+            )
+    
+    dict_games = {
+    'Indie' : 'Indie',
+    'Action': 'Ação',
+    'Casual': 'Casual',
+    'Adventure' : 'Aventura',
+    'Simulation' : 'Simulação',
+    'Strategy' : 'Estratégia',
+    'RPG': 'RPG',
+    'Action-Adventure': 'Ação-Aventura',
+    'Sports' : 'Esportes',
+    'Racing': 'Corrida',
+    'Software' : 'Software',
+    'Fighting': 'Luta',
+    'Early Access': 'Acesso Antecipado',
+    'Steam': 'Complementos de jogo'
+    }
+
+    df_jogos['genero'] = df_jogos['genero'].replace(dict_games)
+
+    #grafico de barras
+    contagem_generos = df_jogos['genero'].value_counts()
+    plt.figure(figsize=(10,6))
+    plt.bar(contagem_generos.index, contagem_generos.values, color="gray")
+    #plt.title ("Quantidade de jogos por gênero", fontsize=12)
+    plt.xlabel("Gêneros", fontsize=12)
+    plt.ylabel("Número de jogos", fontsize=12)
+    plt.xticks(fontsize=8, rotation = 45)
+
+
+    plt.tight_layout()
+    img1 = io.BytesIO()
+    plt.savefig(img1, format='png')
+    img1.seek(0)
+    graf_bar = base64.b64encode(img1.getvalue()).decode('utf-8')
+    plt.close()
+
+    #grafico de pizza
+    contagem_status = df_jogos['status'].value_counts()
+    plt.figure(figsize=(6,6))
+
+    cores = ['tomato', 'lightskyblue', 'lightgreen']
+
+    plt.pie(
+        contagem_status.values,
+        labels=contagem_status.index,
+        autopct="%1.1f%%",
+        startangle=90,
+        colors=cores
+    )
+
+    #plt.title("Proporção da biblioteca")
+
+    img2 = io.BytesIO()
+    plt.savefig(img2, format='png')
+    img2.seek(0)
+    graf_pizza = base64.b64encode(img2.getvalue()).decode('utf-8')
+    plt.close()
+
+
+    #grafico matriz 
+    matriz_comportamento = pd.crosstab(df_jogos['genero'], df_jogos['status'])
+    matriz_comportamento.plot(kind='bar', stacked=True, figsize=(10,6), colormap='viridis')
+    #plt.title('Situação dos jogos: Status X Gênero')
+    plt.xlabel('Gêneros', fontsize=12)
+    plt.ylabel('Quantidade de Jogos', fontsize=12)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    img3 = io.BytesIO()
+    plt.savefig(img3, format='png')
+    img3.seek(0)
+    graf_matriz = base64.b64encode(img3.getvalue()).decode('utf-8')
+    plt.close()
+
+    return render_template(
+        "estatisticas.html",
+        grafico_barras=graf_bar,
+        grafico_pizza=graf_pizza,
+        graf_matriz=graf_matriz
+        )
 
 @app.route('/sincronizar_steam')
 def sincronizar_steam():
@@ -237,7 +347,7 @@ def sincronizar_steam():
     steam_id = session['usuario']['steam_id']
     meu_id = session['usuario']['id'] #NOVO
 
-    # --- aqui vem da biblioteca ---
+    # --- puxa dados da biblioteca ---
     url_owned = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={STEAM_API_KEY}&steamid={steam_id}&include_appinfo=1&format=json"
 
     try:
@@ -264,59 +374,36 @@ def sincronizar_steam():
 
         db.session.commit()
 
+        # enriquecimento de dados (genero)
+        jogos_pedentes = Jogo.query.filter_by(usuario_id = meu_id, genero = "Steam").all();
+    
+        for jogo in jogos_pedentes:
+            if not jogo.steam_appid:
+                continue
+
+            url_store = f"http://store.steampowered.com/api/appdetails?appids={jogo.steam_appid}&l=brazilian"  
+
+            try:
+                res_store = requests.get(url_store)
+                if res_store.status_code == 200:
+                    dados = res_store.json()
+                    str_appid = str(jogo.steam_appid)
+
+                    if dados.get(str_appid, {}).get('success'):
+                        info_jogo = dados[str_appid]['data']
+                        generos = info_jogo.get('genres', [])
+
+                        if generos:
+                            jogo.genero = generos[0]['description']
+            except Exception as e:
+                print("Erro")
+
+            time.sleep(1.5)
+
+        db.session.commit()
+
     except Exception as e:
         print(f"Erro ao sincronzar: {e}")    
-
-    # # --- aqui vem da wishlist ---
-    # # --- 2. AQUI VEM DA WISHLIST ---
-    
-    # # Colocamos o ?p=0 no final para forçar a Steam a não redirecionar e trazer os dados
-    # url_wishlist = f"https://store.steampowered.com/wishlist/profiles/{steam_id}/wishlistdata/?p=0"
-    
-    # # Criamos um "Disfarce" (User-Agent). Isso engana a segurança da Steam, 
-    # # fazendo ela achar que é um usuário real usando o Google Chrome no Windows.
-    # cabecalhos = {
-    #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    # }
-
-    # try:
-    #     # Enviamos a requisição usando o nosso disfarce
-    #     req_wishlist = requests.get(url_wishlist, headers=cabecalhos)
-        
-    #     if req_wishlist.text.strip(): 
-    #         try:
-    #             resposta_wishlist = req_wishlist.json()
-
-    #             if isinstance(resposta_wishlist, dict):
-    #                 if not resposta_wishlist:
-    #                     print("A Wishlist está vazia na página 0.")
-    #                 else:
-    #                     for appid_str, dados_jogo in resposta_wishlist.items():
-    #                         titulo_wishlist = dados_jogo.get('name')
-    #                         appid_wishlist = int(appid_str)
-
-    #                         jogo_existente = Jogo.query.filter_by(titulo=titulo_wishlist, usuario_id=session['usuario']['id']).first()
-
-    #                         if not jogo_existente:
-    #                             novo_jogo = Jogo(
-    #                                 titulo=titulo_wishlist,
-    #                                 genero="Steam",
-    #                                 status="Wishlist",
-    #                                 steam_appid=appid_wishlist,
-    #                                 usuario_id=session['usuario']['id']
-    #                             )
-    #                             db.session.add(novo_jogo)
-
-    #                     db.session.commit()
-                        
-    #         except Exception as e_json:
-    #             print("A Steam bloqueou a leitura da Wishlist.")
-    #             flash("A Steam bloqueou o acesso à Wishlist. Tente novamente mais tarde.", "erro")
-    #     else:
-    #         flash("Sua Wishlist é privada ou está vazia. Verifique a Steam.", "erro")
-        
-    # except Exception as e:
-    #     print(f"Erro de conexão com a WISHLIST: {e}")
 
     return redirect(url_for('home'))
 

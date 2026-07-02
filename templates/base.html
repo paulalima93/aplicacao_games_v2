@@ -7,6 +7,12 @@
 </head>
 <body>
 
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <h2 style="margin-top: 15px;">Processando dados...</h2>
+        <p>Isso pode levar alguns segundos.</p>
+    </div>
+
     <nav class="navbar">
         <h2>🎮 Game Tracker</h2>
         <ul class="nav-links">
@@ -14,6 +20,7 @@
             <li><a href="/biblioteca">Jogos Zerados</a></li>
             <li><a href="/backlog">Backlog (Fila)</a></li>
             <li><a href="/wishlist">Wishlist</a></li>
+            <li><a href="/estatisticas">Estatísticas da Conta</a></li>
         </ul>
 
         <div>
@@ -22,7 +29,7 @@
                 <img src="{{ session['usuario']['foto']}}" alt="Avatar" class="user-avatar">
                 <div class="user-info">
                     <span class="user-name">{{ session['usuario']['nome']}}</span>
-                    <a href="/sincronizar_steam">Sincronizar</a>
+                    <a href="/sincronizar_steam" onclick="mostrarLoading()">Sincronizar</a>
                     <a href="/logout">Sair</a>
                 </div>
             </div>
@@ -43,6 +50,12 @@
     <footer>
         <p>Desenvolvido nas aulas de Python.</p>
     </footer>
+
+    <script>
+        function mostrarLoading(){
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+    </script>
 
 </body>
 </html>
