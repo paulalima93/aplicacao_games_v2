@@ -19,12 +19,16 @@ import io
 import base64
 import time
 
+from teste_bot import buscar_horas
+
+from deep_translator import GoogleTranslator
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get('CHAVE_SECRETA_FLASK')
 
 STEAM_API_KEY = os.environ.get('CHAVE_API_STEAM')
-
+#print(STEAM_API_KEY)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///meus_jogos.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -59,6 +63,14 @@ class Jogo(db.Model):
     steam_appid = db.Column(db.Integer, nullable = True)
     #chave estrangeira - fk
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+
+    tempo_historia = db.Column(db.String(20), nullable=True)
+    tempo_extra = db.Column(db.String(20), nullable=True)
+    tempo_completo = db.Column(db.String(20), nullable=True)
+    tempo_solo = db.Column(db.String(20), nullable=True)
+    tempo_coop = db.Column(db.String(20), nullable=True)
+    tempo_vs = db.Column(db.String(20), nullable=True)
+
 
 # with app.app_context():
 #     db.create_all()
@@ -136,26 +148,82 @@ def mostrar_jogo(id):
 
     jogo = Jogo.query.filter_by(id=id, usuario_id=meu_id).first_or_404()
 
-    #jogo = Jogo.query.get_or_404(id)
+    # jogo = Jogo.query.get_or_404(id)
 
-    if jogo.genero == "Steam" and jogo.steam_appid:
+    imagem = "https://placehold.co/460x215/2b2d31/ffffff?text=Capa+Indisponivel"
+    descricao = "Nenhuma descrição disponível para este jogo."
+    metacritic = None
+
+    if not jogo.steam_appid:
+        url_busca = f"https://store.steampowered.com/api/storesearch/?term={jogo.titulo}&l=brazilian&cc=BR"
+        try:
+            res_busca = requests.get(url_busca).json()
+            if res_busca.get('total', 0) > 0:
+                jogo.steam_appid = res_busca['items'][0]['id']
+                db.session.commit()
+        except Exception as e:
+            print(f"Erro ao buscar pelo nome: {e}")
+
+    if jogo.steam_appid:
         url_loja = f"https://store.steampowered.com/api/appdetails?appids={jogo.steam_appid}&l=brazilian"
 
         try:
-            resposta = requests.get(url_loja).json()
-            str_appid = str(jogo.steam_appid)
+            resposta = requests.get(url_loja)
+            if resposta.status_code == 200:
+                dados = resposta.json()
+                str_appid = str(jogo.steam_appid)
+            
 
-            if resposta.get(str_appid, {}).get('success'):
-                dados_loja = resposta[str_appid]['data']
+                if dados.get(str_appid, {}).get('success'):
+                    dados_loja = dados[str_appid]['data']
 
-                if 'genres' in dados_loja:
-                    jogo.genero = dados_loja['genres'][0]['description']
+                    if 'short_description' in dados_loja:
+                        sinopse_original = dados_loja['short_description']
+                        try:
+                            sinopse_traduzida = GoogleTranslator(source='auto', target='pt').translate(sinopse_original)
+                        except Exception as e:
+                            print(f"Erro ao traduzir: {e}")    
 
-                    db.session.commit()
+                    imagem = dados_loja.get("header_image")
+                    #descricao = dados_loja.get("short_description")
+                    descricao = sinopse_traduzida
+                    metacritic = dados_loja.get("metacritic", {}).get("score")
+
+                    #if 'genres' in dados_loja:
+                    # jogo.genero = dados_loja['genres'][0]['description']
+
+                    
+
+                    # db.session.commit()
+
         except Exception as e:
             print("Deu ruim", e)
 
-    return render_template("jogo.html", jogo=jogo)
+    if jogo.tempo_historia is None and jogo.tempo_solo is None:
+
+        print(f"Buscando jogo {jogo.titulo}")
+        resultado = buscar_horas(jogo.titulo)
+
+        if resultado and resultado.get("sucesso"):
+            jogo.tempo_historia = resultado["historia"]
+            jogo.tempo_extra = resultado["extra"]
+            jogo.tempo_completo = resultado["completo"]
+            jogo.tempo_solo = resultado["solo"]
+            jogo.tempo_coop = resultado["coop"]
+            jogo.tempo_vs = resultado["vs"]
+
+            print("Foi")
+        else:
+            jogo.tempo_historia = ""
+            jogo.tempo_extra = ""
+            jogo.tempo_completo = ""
+            jogo.tempo_solo = ""
+            jogo.tempo_coop = ""
+            jogo.tempo_vs = ""
+            print("O jogo já tá lá")
+        db.session.commit()
+
+    return render_template("jogo.html", jogo=jogo, imagem=imagem, descricao=descricao, metacritic=metacritic)
 
 @app.route("/deletar/<int:id>")
 def deletar_jogo(id):
@@ -211,6 +279,15 @@ def steam_authorize():
     api_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={STEAM_API_KEY}&steamids={steam_id}" 
     
     resposta = requests.get(api_url).json()
+
+    # res = requests.get(api_url)
+    # print("URL:", api_url)
+    # print("Status:", res.status_code)
+    # print("Headers:", res.headers.get("Content-Type"))
+    # print("Texto:")
+    # print(res.text)
+    #resposta = res.json()
+
     jogador = resposta['response']['players'][0]
 
     usuario = Usuario.query.filter_by(steam_id=steam_id).first()
@@ -406,6 +483,39 @@ def sincronizar_steam():
         print(f"Erro ao sincronzar: {e}")    
 
     return redirect(url_for('home'))
+
+
+@app.route('/little_update_dashora/<int:id>')
+def little_update_dashora(id):
+    if 'usuario' not in session:
+        return redirect(url_for('login_steam'))
+
+    meu_id = session['usuario']['id']
+
+    jogo = Jogo.query.filter_by(id=id, usuario_id=meu_id).first_or_404()
+
+    resultado = buscar_horas(jogo.titulo)
+
+    if resultado and resultado.get("sucesso"):
+        jogo.tempo_historia = resultado["historia"]
+        jogo.tempo_extra = resultado["extra"]
+        jogo.tempo_completo = resultado["completo"]
+        jogo.tempo_solo = resultado["solo"]
+        jogo.tempo_coop = resultado["coop"]
+        jogo.tempo_vs = resultado["vs"]
+    
+        print("Foi")
+    else:
+        jogo.tempo_historia = ""
+        jogo.tempo_extra = ""
+        jogo.tempo_completo = ""
+        jogo.tempo_solo = ""
+        jogo.tempo_coop = ""
+        jogo.tempo_vs = ""
+        print("O jogo já tá lá")
+    db.session.commit()
+    return redirect(url_for('mostrar_jogo', id=jogo.id))
+
 
 
 if __name__ == "__main__":

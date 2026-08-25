@@ -1,46 +1,102 @@
 {% extends 'base.html' %}
 
 {% block content %}
-
 <div class="detalhes-jogo">
     <div class="header-jogo">
-        <h1>{{jogo.titulo}}</h1>
+        {% if imagem %}
+        <img src="{{imagem}}" class="imagem-jogo" />
+        {% endif %}
+
+        <h1> {{ jogo.titulo }} </h1>
 
         <div class="header-acoes">
             <span class="badge {{jogo.status.lower()}}">{{jogo.status}}</span>
 
             <details class="dropdown">
                 <summary class="pontinhos">⋮</summary>
+
                 <ul class="menu-opcoes">
+                    {% if jogo.status == 'Wishlist' %}
                     <li>
                         <a href="/mudar_status/{{jogo.id}}/Backlog">
-                            Mover para Backlog
+                            Mover para o backlog
                         </a>
                     </li>
                     <li>
                         <a href="/mudar_status/{{jogo.id}}/Zerado">
-                            Mover para Zerados
+                            Mover para zerados
                         </a>
                     </li>
+
+                    {% elif jogo.status == 'Backlog' %}
+                    <li>
+                        <a href="/mudar_status/{{jogo.id}}/Zerado">
+                            Mover para zerados
+                        </a>
+                    </li>
+                    {% endif %}
                     <hr>
+
                     <li>
                         <a href="/deletar/{{ jogo.id }}">
-                            Excluir jogo
+                            Excluir o jogo
                         </a>
                     </li>
                 </ul>
             </details>
         </div>
+
     </div>
 
     <div class="info">
-        <p><strong>Gênero: </strong>{{jogo.genero}}</p>
+        <div class="tags-jogo">
+            {% if metacritic %}
+            <span class="badge-metacritic">Metacritic: {{metacritic}} </span>
+            {% endif %}
+            <span class="badge-genero">Gênero: {{jogo.genero}}</span>
+        </div>
+
+        {% if descricao %}
+            <div class="sinopse-jogo">
+                <p>{{descricao}}</p>
+            </div>
+        {% endif %}
     </div>
 
+    <div class="estatisticas-jogo">
+        <h3>Tempo Estimado de Jogo <a class="btn_atualizar"  href="/little_update_dashora/{{ jogo.id }}">Atualizar horinhas</a> </h3>
+        {% if jogo.historia or jogo.tempo_extra or jogo.tempo_completo %}
+        <ul>
+            <li><strong>História Principal:</strong>
+                {{ jogo.tempo_historia ~ ' horas' if jogo.tempo_historia else 'Não disponível' }}
+            </li>
+            <li><strong>História + Extras:</strong>
+                {{ jogo.tempo_extra ~ ' horas' if jogo.tempo_extra else 'Não disponível' }}
+            </li>
+            <li><strong>Completista (100%):</strong>
+                {{ jogo.tempo_completo ~ ' horas' if jogo.tempo_completo else 'Não disponível' }}
+            </li>
+        </ul>
 
+        {% elif jogo.tempo_solo or jogo.tempo_coop or jogo.tempo_vs %}
+        <ul>
+            <li><strong>Solo:</strong>
+                {{ jogo.tempo_solo  ~ ' horas' if jogo.tempo_solo else 'Não disponível' }}
+            </li>
+            <li><strong>Co-Op:</strong>
+                {{ jogo.tempo_coop ~ ' horas' if jogo.tempo_coop else 'Não disponível' }}
+            </li>
+            <li><strong>Vs.:</strong>
+                {{ jogo.tempo_vs ~ ' horas' if jogo.tempo_vs else 'Não disponível' }}
+            </li>
+        </ul>
+        {% endif %}
+
+        
+    </div>
 
     <a href="javascript:history.back()" class="btn-voltar">Voltar</a>
-
 </div>
+
 
 {% endblock %}
