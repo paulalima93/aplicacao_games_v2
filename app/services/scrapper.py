@@ -4,6 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
+import os
 
 def normalizar_nome(nome):
 
@@ -23,17 +24,6 @@ def numero_valido(texto):
 
 def buscar_horas(nome_jogo):
 
-    opcoes = uc.ChromeOptions()
-    ##opcoes.add_argument("--headless=new")
-
-    navegador = uc.Chrome(options=opcoes, version_main=150)
-
-    url = f"https://howlongtobeat.com/?q={nome_jogo.replace(' ', '+')}"
-
-    navegador.get(url)
-
-    print("Aguardando coleta")
-
     resultado = {
         "sucesso": False,
         "historia": "",
@@ -43,6 +33,23 @@ def buscar_horas(nome_jogo):
         "coop": "",
         "vs": ""
     }
+
+    if os.getenv('AMBIENTE') == 'producao':
+        print("Scrapper desativado")
+        return resultado
+
+    
+    opcoes = uc.ChromeOptions()
+    ##opcoes.add_argument("--headless=new")
+
+    navegador = uc.Chrome(options=opcoes)
+
+    url = f"https://howlongtobeat.com/?q={nome_jogo.replace(' ', '+')}"
+
+    navegador.get(url)
+
+    print("Aguardando coleta")
+
 
     try:
 

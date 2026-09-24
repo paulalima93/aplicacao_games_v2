@@ -1,29 +1,59 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Bem-vindo ao seu Tracker!</h1>
-    <p>Use o menu acima para navegar entre seus jogos zerados e o seu backlog.</p>
-    
-    <div class="dashboard-resumo">
-        <p>Você tem <strong>{{backlog}}</strong> jogos no Backlog.</p>
-        <p>Você já zerou <strong>{{zerados}}</strong> jogos!</p>
-        <p>Você tem <strong>{{wishlist}}</strong> jogos na sua wishlist!</p>
+<h1>Bem-vindo ao seu Tracker!</h1>
+<p>Use o menu acima para navegar entre seus jogos zerados e o seu backlog.</p>
+
+<div class="dashboard-resumo">
+    <p>Você tem <strong>{{backlog}}</strong> jogos no Backlog.</p>
+    <p>Você já zerou <strong>{{zerados}}</strong> jogos!</p>
+    <p>Você tem <strong>{{wishlist}}</strong> jogos na sua wishlist!</p>
+</div>
+
+{% if recomendacoes %}
+<div>
+    <h2>Recomendações</h2>
+    <!-- ajustar o estilo pra ser um carrossel -->
+    <div class="carrossel-container">
+        {% for rec in recomendacoes %}
+        <div class="carrossel-card">
+            <img src="{{rec.imagem}}" class="carrossel-img">
+            <div class="carrossel-conteudo">
+                <h4 class="carrossel-titulo" title="{{ rec.titulo }}">{{ rec.titulo }}</h4>
+
+                <form action="{{ url_for('main.adicionar_jogo') }}" method="POST" class="carrossel-form">
+                    <input type="hidden" name="titulo" value="{{ rec.titulo }}">
+                    <input type="hidden" name="genero" value="Recomendação">
+
+                    <button type="submit" name="status" value="Wishlist" class="btn-acao btn-wishlist">
+                        Wishlist
+                    </button>
+
+                    <button type="submit" name="status" value="Backlog" class="btn-acao btn-backlog">
+                        Backlog
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
     </div>
+</div>
+{% endif %}
 
-    <div class="card">
-        <h3> Adicionar Novo Jogo</h3>
+<div class="card">
+    <h3> Adicionar Novo Jogo</h3>
 
-        <form action="/adicionar" method="POST" class="form-cadastro">
-            <input type="text" name="titulo" placeholder="Nome do Jogo" required>
-            <input type="text" name="genero" placeholder="Gênero" required>
-            <select name="status">
-                <option value="Backlog"> Na Fila (Backlog)</option>
-                <option value="Zerado"> Finalizado (Zerado)</option>
-                <option value="Wishlist"> Comprarei (Wishlist)</option>
-            </select>
+    <form action="/adicionar" method="POST" class="form-cadastro">
+        <input type="text" name="titulo" placeholder="Nome do Jogo" required>
+        <input type="text" name="genero" placeholder="Gênero" required>
+        <select name="status">
+            <option value="Backlog"> Na Fila (Backlog)</option>
+            <option value="Zerado"> Finalizado (Zerado)</option>
+            <option value="Wishlist"> Comprarei (Wishlist)</option>
+        </select>
 
-            <button type="submit">Salvar Jogo</button>
+        <button type="submit">Salvar Jogo</button>
 
-        </form>
-    </div>
+    </form>
+</div>
 {% endblock %}

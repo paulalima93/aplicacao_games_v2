@@ -65,7 +65,7 @@
 
     <div class="estatisticas-jogo">
         <h3>Tempo Estimado de Jogo <a class="btn_atualizar"  href="/little_update_dashora/{{ jogo.id }}">Atualizar horinhas</a> </h3>
-        {% if jogo.historia or jogo.tempo_extra or jogo.tempo_completo %}
+        {% if jogo.tempo_historia or jogo.tempo_extra or jogo.tempo_completo %}
         <ul>
             <li><strong>História Principal:</strong>
                 {{ jogo.tempo_historia ~ ' horas' if jogo.tempo_historia else 'Não disponível' }}
@@ -93,6 +93,30 @@
         {% endif %}
 
         
+    </div>
+
+    <div class="carrossel-container">
+        {% for s in similares %}
+        <div class="carrossel-card">
+            <img src="{{s.imagem}}" class="carrossel-img">
+            <div class="carrossel-conteudo">
+                <h4 class="carrossel-titulo" title="{{ s.titulo }}">{{ s.titulo }}</h4>
+
+                <form action="{{ url_for('main.adicionar_jogo') }}" method="POST" class="carrossel-form">
+                    <input type="hidden" name="titulo" value="{{ s.titulo }}">
+                    <input type="hidden" name="genero" value="{{ jogo.genero }}">
+
+                    <button type="submit" name="status" value="Wishlist" class="btn-acao btn-wishlist">
+                        Wishlist
+                    </button>
+
+                    <button type="submit" name="status" value="Backlog" class="btn-acao btn-backlog">
+                        Backlog
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 
     <a href="javascript:history.back()" class="btn-voltar">Voltar</a>
